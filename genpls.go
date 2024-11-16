@@ -162,10 +162,22 @@ func (gw *genWorker) run(ctx context.Context) error {
 func (gw *genWorker) scan(pkg *packages.Package) map[string][]Please {
 	typs := map[string]*TypeSpec{}
 
-	in := inspector.New(pkg.Syntax)
+	var syntax []*ast.File
+
+	if isTestPackage(pkg) {
+		syntax = selectTestfiles(pkg, pkg.Syntax)
+	} else {
+		syntax = pkg.Syntax
+	}
+
+	in := inspector.New(syntax)
 
 	for ts := range gw.typeSpecs(pkg, in) {
 		typs[ts.Spec.Name.Name] = &ts
+	}
+
+	if len(typs) == 0 {
+		return nil
 	}
 
 	for fs := range gw.funcSpecs(in) {
@@ -190,6 +202,10 @@ func (gw *genWorker) scan(pkg *packages.Package) map[string][]Please {
 }
 
 func (gw *genWorker) execGenerators(ctx context.Context, cmds map[string][]Please) error {
+	if cmds == nil {
+		return nil
+	}
+
 	for name, gen := range gw.gens {
 		pls, ok := cmds[string(name)]
 		if !ok {
@@ -346,6 +362,36 @@ func (ts *TypeSpec) commands(gens map[GeneratorName]GenFunc) iter.Seq[command] {
 			}
 		}
 	}
+}
+
+func selectTestfiles(pkg *packages.Package, syntax []*ast.File) []*ast.File {
+	var testfiles []*ast.File
+
+	for _, file := range syntax {
+		f := pkg.Fset.File(file.Pos())
+		if f == nil {
+			continue
+		}
+
+		name := f.Name()
+		if !strings.HasSuffix(strings.ToLower(name), "_test.go") {
+			continue
+		}
+
+		testfiles = append(testfiles, file)
+	}
+
+	return testfiles
+}
+
+func isTestPackage(pkg *packages.Package) bool {
+	for _, f := range pkg.GoFiles {
+		if strings.HasSuffix(f, "_test.go") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func inspectRecvName(recv *ast.FieldList) (name string) {
