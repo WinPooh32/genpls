@@ -43,14 +43,6 @@ func (gn GeneratorName) Command() string {
 	return cmdPrefix + string(gn)
 }
 
-// File is a result of the code generation.
-type File struct {
-	// Name is an absolute file path.
-	Name string
-	// Data is a file content.
-	Data []byte
-}
-
 // Generator loads go files and runs generators on them.
 type Generator struct {
 	pkgs map[pkgID]*packages.Package
