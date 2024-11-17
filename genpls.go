@@ -29,12 +29,6 @@ const pkgLoadMode = packages.NeedModule |
 
 type pkgID string
 
-type Please struct {
-	Filename string
-	Args     []string
-	TS       *TypeSpec
-}
-
 type GenFunc func(ctx context.Context, name GeneratorName, pls []Please) ([]File, error)
 
 type GeneratorName string
