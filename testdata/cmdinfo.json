@@ -1,0 +1,135 @@
+[
+    {
+        "pkg_path": "parse",
+        "pkg_name": "parse",
+        "filename": "/internal/_testdata/parsing/parsing.go",
+        "cmd": "test",
+        "args": [
+            "I1"
+        ],
+        "type": {
+            "name": "I1",
+            "methods": [
+                {
+                    "name": "IMethod1",
+                    "doc": "IMethod1 doc\n"
+                },
+                {
+                    "name": "imethod2",
+                    "doc": "imethod2 doc\n"
+                }
+            ]
+        }
+    },
+    {
+        "pkg_path": "parse",
+        "pkg_name": "parse",
+        "filename": "/internal/_testdata/parsing/parsing.go",
+        "cmd": "test",
+        "args": [
+            "S1"
+        ],
+        "type": {
+            "name": "S1",
+            "fields": [
+                {
+                    "name": "S1Field1",
+                    "doc": "S1Field1 doc\n"
+                },
+                {
+                    "name": "S1Field2",
+                    "doc": "S1Field2 doc\n"
+                }
+            ]
+        }
+    },
+    {
+        "pkg_path": "parse",
+        "pkg_name": "parse",
+        "filename": "/internal/_testdata/parsing/parsing.go",
+        "cmd": "test",
+        "args": [
+            "S3"
+        ],
+        "type": {
+            "name": "S3",
+            "fields": [
+                {
+                    "name": "S3Field1",
+                    "doc": "S3Field1\nmultiline\ndoc\n"
+                },
+                {
+                    "name": "S3Field2"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "method1",
+                    "doc": "method1 doc\n"
+                },
+                {
+                    "name": "Method2",
+                    "doc": "Method2 doc\n"
+                },
+                {
+                    "name": "method3",
+                    "doc": "method3 doc\n"
+                },
+                {
+                    "name": "method4",
+                    "doc": "method4 doc\n"
+                },
+                {
+                    "name": "method5",
+                    "doc": "method5 doc\n"
+                },
+                {
+                    "name": "method6",
+                    "doc": "method6 doc\n"
+                }
+            ]
+        }
+    },
+    {
+        "pkg_path": "parse",
+        "pkg_name": "parse",
+        "filename": "/internal/_testdata/parsing/parsing.go",
+        "cmd": "test",
+        "args": [
+            "S4"
+        ],
+        "type": {
+            "name": "S4",
+            "fields": [
+                {
+                    "name": "S4Field",
+                    "doc": "S4Field doc\n"
+                }
+            ]
+        }
+    },
+    {
+        "pkg_path": "parse",
+        "pkg_name": "parse",
+        "filename": "/internal/_testdata/parsing/parsing.go",
+        "cmd": "test",
+        "args": [
+            "s2",
+            "arg2",
+            "arg3"
+        ],
+        "type": {
+            "name": "s2",
+            "fields": [
+                {
+                    "name": "s2Field1",
+                    "doc": "S2Field1 doc\n"
+                },
+                {
+                    "name": "s2Field2",
+                    "doc": "s2Field2 doc\n"
+                }
+            ]
+        }
+    }
+]

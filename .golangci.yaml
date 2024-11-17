@@ -138,8 +138,15 @@ linters-settings:
   exhaustruct:
     exclude:
       - golang.org/x/.*Config$
+  tagliatelle:
+    case:
+      rules:
+        json: snake
 issues:
   exclude-rules:
     - path: '(.+)_test\.go'
       linters:
+        - exhaustruct
         - revive
+  exclude:
+    - "_testdata/*"
