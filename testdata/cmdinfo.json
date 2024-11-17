@@ -53,6 +53,7 @@
         ],
         "type": {
             "name": "S3",
+            "doc": "S3 struct doc\n",
             "fields": [
                 {
                     "name": "S3Field1",

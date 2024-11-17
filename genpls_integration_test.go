@@ -67,7 +67,7 @@ func NewCmdInfo(pls genpls.Please, name genpls.GeneratorName) CmdInfo {
 		Type: TypeInfo{
 			Info: Info{
 				Name: pls.TS.Spec.Name.Name,
-				Doc:  pls.TS.Spec.Doc.Text(),
+				Doc:  pls.TS.Doc.Text(),
 			},
 			Fields:  newFieldsInfo(pls.TS),
 			Methods: newMethodsInfo(pls.TS),
