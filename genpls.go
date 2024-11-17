@@ -345,6 +345,10 @@ func (ts *TypeSpec) commands(gens map[GeneratorName]GenFunc) iter.Seq[command] {
 				continue
 			}
 
+			if !strings.HasPrefix(line.Text, "//"+cmdPrefix) {
+				panic(fmt.Sprintf("no spaces are expected after // at comment line %q", line.Text))
+			}
+
 			cmd := command{
 				name: name,
 				args: cleanupArgs(strings.Split(args, " ")),
