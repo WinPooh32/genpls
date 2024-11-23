@@ -204,6 +204,7 @@ func TestGenerator_Generate(t *testing.T) {
 			gotResults := []opt.Result[gen.File]{}
 
 			for res := range tt.gen.Generate(context.Background(), tt.args.jobs, tt.args.gens) {
+				require.NoError(t, res.Err)
 				gotResults = append(gotResults, res)
 			}
 
