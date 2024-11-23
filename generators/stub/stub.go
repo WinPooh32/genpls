@@ -73,7 +73,7 @@ func stubIface(w io.Writer, pls gen.Please) error {
 	rcv := strings.ToLower(string([]rune(concrname)[0]))
 
 	fmt.Fprintf(w, "// *%s implements %s.\n", concrname, ifacename)
-	fmt.Fprintf(w, "type %s struct{}\n", concrname)
+	fmt.Fprintf(w, "type %s struct{}\n\n", concrname)
 
 	mset := types.NewMethodSet(object.Type())
 
@@ -81,7 +81,7 @@ func stubIface(w io.Writer, pls gen.Please) error {
 		meth := mset.At(i).Obj()
 		sig := types.TypeString(meth.Type(), (*types.Package).Name)
 
-		fmt.Fprintf(w, "func (%s *%s) %s%s {\n\tpanic(\"not implemented!\")\n}\n",
+		fmt.Fprintf(w, "func (%s *%s) %s%s {\n\tpanic(\"not implemented!\")\n}\n\n",
 			rcv, concrname, meth.Name(),
 			strings.TrimPrefix(sig, "func"))
 	}
