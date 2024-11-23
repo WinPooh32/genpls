@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/WinPooh32/genpls"
+	"github.com/WinPooh32/genpls/gen"
 	"github.com/WinPooh32/genpls/opt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,7 +58,7 @@ type TypeInfo struct {
 	Methods []Info `json:"methods,omitempty"`
 }
 
-func NewCmdInfo(pls genpls.Please, name genpls.GeneratorName) CmdInfo {
+func NewCmdInfo(pls gen.Please, name gen.GeneratorName) CmdInfo {
 	cmdi := CmdInfo{
 		PkgName:  pls.TS.Pkg.Name,
 		PkgPath:  pls.TS.Pkg.PkgPath,
@@ -77,7 +78,7 @@ func NewCmdInfo(pls genpls.Please, name genpls.GeneratorName) CmdInfo {
 	return cmdi
 }
 
-func newFieldsInfo(ts *genpls.TypeSpec) []Info {
+func newFieldsInfo(ts *gen.TypeSpec) []Info {
 	switch node := ts.Spec.Type.(type) {
 	case *ast.StructType:
 		var infos []Info
@@ -97,7 +98,7 @@ func newFieldsInfo(ts *genpls.TypeSpec) []Info {
 	}
 }
 
-func newMethodsInfo(ts *genpls.TypeSpec) []Info {
+func newMethodsInfo(ts *gen.TypeSpec) []Info {
 	var infos []Info
 
 	switch node := ts.Spec.Type.(type) {
@@ -131,8 +132,8 @@ func trimDirPrefix(filename string) string {
 	return strings.TrimPrefix(filename, dir)
 }
 
-var genmap1 = map[genpls.GeneratorName]genpls.GenFunc{
-	"test": func(ctx context.Context, name genpls.GeneratorName, pp []genpls.Please) ([]genpls.File, error) {
+var genmap1 = map[gen.GeneratorName]gen.Func{
+	"test": func(ctx context.Context, name gen.GeneratorName, pp []gen.Please) ([]gen.File, error) {
 		cmds := []CmdInfo{}
 
 		for i := range pp {
@@ -159,7 +160,7 @@ var genmap1 = map[genpls.GeneratorName]genpls.GenFunc{
 			return nil, fmt.Errorf("unmarshal json: %w", err)
 		}
 
-		return []genpls.File{{
+		return []gen.File{{
 			Name: pp[0].FormatGeneratorFileName(name, false),
 			Data: data,
 		}}, nil
@@ -171,14 +172,14 @@ func TestGenerator_Generate(t *testing.T) {
 
 	type args struct {
 		jobs int
-		gens map[genpls.GeneratorName]genpls.GenFunc
+		gens map[gen.GeneratorName]gen.Func
 	}
 
 	tests := []struct {
 		name string
 		gen  *genpls.Generator
 		args args
-		want []opt.Result[genpls.File]
+		want []opt.Result[gen.File]
 	}{
 		{
 			name: "simple",
@@ -187,8 +188,8 @@ func TestGenerator_Generate(t *testing.T) {
 				jobs: 1,
 				gens: genmap1,
 			},
-			want: []opt.Result[genpls.File]{
-				opt.Ok(genpls.File{
+			want: []opt.Result[gen.File]{
+				opt.Ok(gen.File{
 					Name: "/internal/_testdata/parsing/test_gen.go",
 					Data: testCmdInfos,
 				}),
@@ -200,13 +201,13 @@ func TestGenerator_Generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotResults := []opt.Result[genpls.File]{}
+			gotResults := []opt.Result[gen.File]{}
 
 			for res := range tt.gen.Generate(context.Background(), tt.args.jobs, tt.args.gens) {
 				gotResults = append(gotResults, res)
 			}
 
-			f := func(a, b opt.Result[genpls.File]) int {
+			f := func(a, b opt.Result[gen.File]) int {
 				return cmp.Compare(a.Ok.Name, b.Ok.Name)
 			}
 

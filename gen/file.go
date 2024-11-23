@@ -1,4 +1,4 @@
-package genpls
+package gen
 
 import (
 	"iter"

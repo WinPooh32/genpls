@@ -9,34 +9,40 @@ import (
 	"io"
 	"strings"
 
-	"github.com/WinPooh32/genpls"
+	"github.com/WinPooh32/genpls/gen"
 )
 
-func Generate(_ context.Context, name genpls.GeneratorName, pp []genpls.Please) ([]genpls.File, error) {
-	var files []genpls.File
+func Generate(ctx context.Context, name gen.GeneratorName, gp []gen.Please) ([]gen.File, error) {
+	var files []gen.File
 
 	buf := bytes.NewBuffer(nil)
 
-	for filename, pp := range genpls.IterateFiles(pp) {
+	for filename, gp := range gen.IterateFiles(gp) {
 		buf.Reset()
-		buf.WriteString(pp[0].FormatDoNotEditHeader(name))
-		buf.WriteString(pp[0].FormatPkg())
+		buf.WriteString(gp[0].FormatDoNotEditHeader(name))
+		buf.WriteString(gp[0].FormatPkg())
 
-		if err := generate(buf, pp); err != nil {
+		if err := generate(buf, gp); err != nil {
 			return nil, fmt.Errorf("generate: %w", err)
 		}
 
-		files = append(files, genpls.File{
-			Name: pp[0].FormatGeneratorFileName(name, strings.HasSuffix(filename, "_test.go")),
+		files = append(files, gen.File{
+			Name: gp[0].FormatGeneratorFileName(name, strings.HasSuffix(filename, "_test.go")),
 			Data: bytes.Clone(buf.Bytes()),
 		})
+
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context is closed: %w", ctx.Err())
+		default:
+		}
 	}
 
 	return files, nil
 }
 
-func generate(w io.Writer, pp []genpls.Please) error {
-	for _, pls := range pp {
+func generate(w io.Writer, gp []gen.Please) error {
+	for _, pls := range gp {
 		if err := stubIface(w, pls); err != nil {
 			return err
 		}
@@ -45,7 +51,7 @@ func generate(w io.Writer, pp []genpls.Please) error {
 	return nil
 }
 
-func stubIface(w io.Writer, pls genpls.Please) error {
+func stubIface(w io.Writer, pls gen.Please) error {
 	ifacename := pls.TS.Spec.Name.Name
 	position := pls.TS.Pkg.Fset.Position(pls.TS.Spec.Pos())
 

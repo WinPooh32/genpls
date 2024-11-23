@@ -11,14 +11,13 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/WinPooh32/genpls/gen"
 	"github.com/WinPooh32/genpls/internal/xslices"
 	"github.com/WinPooh32/genpls/opt"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/go/ast/inspector"
 	"golang.org/x/tools/go/packages"
 )
-
-const cmdPrefix = "genpls:"
 
 const pkgLoadMode = packages.NeedModule |
 	packages.NeedName |
@@ -28,14 +27,6 @@ const pkgLoadMode = packages.NeedModule |
 	packages.NeedTypesInfo
 
 type pkgID string
-
-type GenFunc func(ctx context.Context, name GeneratorName, pls []Please) ([]File, error)
-
-type GeneratorName string
-
-func (gn GeneratorName) Command() string {
-	return cmdPrefix + string(gn)
-}
 
 // Generator loads go files and runs generators on them.
 type Generator struct {
@@ -54,7 +45,7 @@ func NewGenerator() (*Generator, error) {
 // Dir parameter is the directory in which to run the build system's query
 // tool that provides information about the packages.
 // If Dir is empty, the tool is run in the current directory.
-func (gen *Generator) Load(ctx context.Context, dir string, patterns ...string) (*Generator, error) {
+func (g *Generator) Load(ctx context.Context, dir string, patterns ...string) (*Generator, error) {
 	cfg := &packages.Config{
 		Mode:    pkgLoadMode,
 		Context: ctx,
@@ -67,8 +58,8 @@ func (gen *Generator) Load(ctx context.Context, dir string, patterns ...string) 
 		return nil, fmt.Errorf("load packages: %w", err)
 	}
 
-	if len(gen.pkgs) == 0 {
-		gen.pkgs = make(map[pkgID]*packages.Package, len(gen.pkgs))
+	if len(g.pkgs) == 0 {
+		g.pkgs = make(map[pkgID]*packages.Package, len(g.pkgs))
 	}
 
 	var errs pkgerrs
@@ -79,36 +70,40 @@ func (gen *Generator) Load(ctx context.Context, dir string, patterns ...string) 
 			continue
 		}
 
-		gen.pkgs[pkgID(pkg.ID)] = pkg
+		g.pkgs[pkgID(pkg.ID)] = pkg
 	}
 
 	if errs != nil {
-		return gen, &errs
+		return g, &errs
 	}
 
-	return gen, nil
+	return g, nil
 }
 
 // Generate runs generator functions on Go's packages loaded AST.
 // Returns the stream of generated contents.
 // The jobs parameter specifies number of used goroutines for processing, if set as 0 number of cpu cores will be used.
-func (gen *Generator) Generate(ctx context.Context, jobs int, gens map[GeneratorName]GenFunc) <-chan opt.Result[File] {
+func (g *Generator) Generate(
+	ctx context.Context,
+	jobs int,
+	gens map[gen.GeneratorName]gen.Func,
+) <-chan opt.Result[gen.File] {
 	if jobs <= 0 {
 		jobs = runtime.NumCPU()
 	}
 
-	resC := make(chan opt.Result[File], jobs*len(gens))
+	resC := make(chan opt.Result[gen.File], jobs*len(gens))
 
 	go func() {
 		defer close(resC)
 
 		eg, ctx := errgroup.WithContext(ctx)
-		pkgs := slices.Collect(maps.Keys(gen.pkgs))
+		pkgs := slices.Collect(maps.Keys(g.pkgs))
 
 		for part := range xslices.Split(pkgs, jobs) {
 			eg.Go(func() error {
 				wrkr := genWorker{
-					pkgs:   gen.pkgs,
+					pkgs:   g.pkgs,
 					gens:   gens,
 					pkgIDs: part,
 					resC:   resC,
@@ -119,7 +114,7 @@ func (gen *Generator) Generate(ctx context.Context, jobs int, gens map[Generator
 		}
 
 		if err := eg.Wait(); err != nil {
-			resC <- opt.Err[File](err)
+			resC <- opt.Err[gen.File](err)
 			return
 		}
 	}()
@@ -129,9 +124,9 @@ func (gen *Generator) Generate(ctx context.Context, jobs int, gens map[Generator
 
 type genWorker struct {
 	pkgs   map[pkgID]*packages.Package
-	gens   map[GeneratorName]GenFunc
+	gens   map[gen.GeneratorName]gen.Func
 	pkgIDs []pkgID
-	resC   chan<- opt.Result[File]
+	resC   chan<- opt.Result[gen.File]
 }
 
 func (gw *genWorker) run(ctx context.Context) error {
@@ -153,8 +148,8 @@ func (gw *genWorker) run(ctx context.Context) error {
 	return nil
 }
 
-func (gw *genWorker) scan(pkg *packages.Package) map[string][]Please {
-	typs := map[string]*TypeSpec{}
+func (gw *genWorker) scan(pkg *packages.Package) map[string][]gen.Please {
+	typs := map[string]*gen.TypeSpec{}
 
 	var syntax []*ast.File
 
@@ -186,16 +181,16 @@ func (gw *genWorker) scan(pkg *packages.Package) map[string][]Please {
 		}
 	}
 
-	cmds := map[string][]Please{}
+	cmds := map[string][]gen.Please{}
 
 	for _, ts := range typs {
-		ts.addCMD(cmds, ts.commands(gw.gens))
+		ts.AddCMD(cmds, commands(ts, gw.gens))
 	}
 
 	return cmds
 }
 
-func (gw *genWorker) execGenerators(ctx context.Context, cmds map[string][]Please) error {
+func (gw *genWorker) execGenerators(ctx context.Context, cmds map[string][]gen.Please) error {
 	if cmds == nil {
 		return nil
 	}
@@ -221,7 +216,7 @@ func (gw *genWorker) execGenerators(ctx context.Context, cmds map[string][]Pleas
 	return nil
 }
 
-func (gw *genWorker) sendFile(ctx context.Context, file File) error {
+func (gw *genWorker) sendFile(ctx context.Context, file gen.File) error {
 	select {
 	case gw.resC <- opt.Ok(file):
 	case <-ctx.Done():
@@ -236,8 +231,8 @@ var typeSpecsFilter = []ast.Node{
 	new(ast.TypeSpec),
 }
 
-func (gw *genWorker) typeSpecs(pkg *packages.Package, in *inspector.Inspector) iter.Seq[TypeSpec] {
-	return func(yield func(TypeSpec) bool) {
+func (gw *genWorker) typeSpecs(pkg *packages.Package, in *inspector.Inspector) iter.Seq[gen.TypeSpec] {
+	return func(yield func(gen.TypeSpec) bool) {
 		in.WithStack(typeSpecsFilter, func(n ast.Node, _ bool, stack []ast.Node) (proceed bool) {
 			spec, ok := n.(*ast.TypeSpec)
 			if !ok {
@@ -256,7 +251,7 @@ func (gw *genWorker) typeSpecs(pkg *packages.Package, in *inspector.Inspector) i
 				return false
 			}
 
-			ts := TypeSpec{
+			ts := gen.TypeSpec{
 				Pkg:     pkg,
 				Doc:     doc,
 				Spec:    spec,
@@ -276,8 +271,8 @@ var funcSpecsFilter = []ast.Node{
 	new(ast.FuncDecl),
 }
 
-func (gw *genWorker) funcSpecs(in *inspector.Inspector) iter.Seq[FuncSpec] {
-	return func(yield func(FuncSpec) bool) {
+func (gw *genWorker) funcSpecs(in *inspector.Inspector) iter.Seq[gen.FuncSpec] {
+	return func(yield func(gen.FuncSpec) bool) {
 		in.WithStack(funcSpecsFilter, func(n ast.Node, _ bool, _ []ast.Node) (proceed bool) {
 			funcDecl, ok := n.(*ast.FuncDecl)
 			if !ok {
@@ -285,7 +280,7 @@ func (gw *genWorker) funcSpecs(in *inspector.Inspector) iter.Seq[FuncSpec] {
 				return false
 			}
 
-			fs := FuncSpec{
+			fs := gen.FuncSpec{
 				Doc:  funcDecl.Doc,
 				Decl: funcDecl,
 				Type: funcDecl.Type,
@@ -297,68 +292,6 @@ func (gw *genWorker) funcSpecs(in *inspector.Inspector) iter.Seq[FuncSpec] {
 
 			return false
 		})
-	}
-}
-
-type command struct {
-	name string
-	args []string
-	gen  GenFunc
-}
-
-type FuncSpec struct {
-	Doc  *ast.CommentGroup
-	Decl *ast.FuncDecl
-	Type *ast.FuncType
-}
-
-type TypeSpec struct {
-	Pkg     *packages.Package
-	Doc     *ast.CommentGroup
-	Spec    *ast.TypeSpec
-	Methods []FuncSpec
-}
-
-func (ts *TypeSpec) addCMD(cmds map[string][]Please, cmdSeq iter.Seq[command]) {
-	filename := ts.Pkg.Fset.Position(ts.Spec.Pos()).Filename
-
-	for cmd := range cmdSeq {
-		cmds[cmd.name] = append(cmds[cmd.name], Please{
-			Filename: filename,
-			Args:     cmd.args,
-			TS:       ts,
-		})
-	}
-}
-
-func (ts *TypeSpec) commands(gens map[GeneratorName]GenFunc) iter.Seq[command] {
-	return func(yield func(command) bool) {
-		for _, line := range ts.Doc.List {
-			textOnly := trimCommentPrefix(line.Text)
-			textOnly = strings.TrimSpace(textOnly)
-
-			name, args, _ := strings.Cut(textOnly, " ")
-			name = strings.TrimPrefix(name, cmdPrefix)
-
-			genf, ok := gens[GeneratorName(name)]
-			if !ok {
-				continue
-			}
-
-			if !strings.HasPrefix(line.Text, "//"+cmdPrefix) {
-				panic(fmt.Sprintf("no spaces are expected after // at comment line %q", line.Text))
-			}
-
-			cmd := command{
-				name: name,
-				args: cleanupArgs(strings.Split(args, " ")),
-				gen:  genf,
-			}
-
-			if !yield(cmd) {
-				return
-			}
-		}
 	}
 }
 
@@ -419,6 +352,37 @@ func inspectRecvName(recv *ast.FieldList) (name string) {
 	})
 
 	return name
+}
+
+func commands(ts *gen.TypeSpec, gens map[gen.GeneratorName]gen.Func) iter.Seq[gen.Command] {
+	return func(yield func(gen.Command) bool) {
+		for _, line := range ts.Doc.List {
+			textOnly := trimCommentPrefix(line.Text)
+			textOnly = strings.TrimSpace(textOnly)
+
+			name, args, _ := strings.Cut(textOnly, " ")
+			name = strings.TrimPrefix(name, gen.CmdPrefix)
+
+			genf, ok := gens[gen.GeneratorName(name)]
+			if !ok {
+				continue
+			}
+
+			if !strings.HasPrefix(line.Text, "//"+gen.CmdPrefix) {
+				panic(fmt.Sprintf("no spaces are expected after // at comment line %q", line.Text))
+			}
+
+			cmd := gen.Command{
+				Name: name,
+				Args: cleanupArgs(strings.Split(args, " ")),
+				Gen:  genf,
+			}
+
+			if !yield(cmd) {
+				return
+			}
+		}
+	}
 }
 
 func isCommentSlashOrSpace(r rune) bool {

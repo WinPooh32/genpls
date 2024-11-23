@@ -1,9 +1,9 @@
-package genpls_test
+package gen_test
 
 import (
 	"testing"
 
-	"github.com/WinPooh32/genpls"
+	"github.com/WinPooh32/genpls/gen"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,29 +11,29 @@ func TestPlease_FmtFileName(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
-		name genpls.GeneratorName
+		name gen.GeneratorName
 	}
 
 	tests := []struct {
 		name string
-		pls  genpls.Please
+		pls  gen.Please
 		args args
 		want string
 	}{
 		{
 			name: "usual file",
-			pls: genpls.Please{
+			pls: gen.Please{
 				Filename: "/pkgname/file.go",
 			},
-			args: args{genpls.GeneratorName("stub")},
+			args: args{gen.GeneratorName("stub")},
 			want: "/pkgname/file_stub_gen.go",
 		},
 		{
 			name: "test file",
-			pls: genpls.Please{
+			pls: gen.Please{
 				Filename: "/pkgname/file_test.go",
 			},
-			args: args{genpls.GeneratorName("stub")},
+			args: args{gen.GeneratorName("stub")},
 			want: "/pkgname/file_stub_gen_test.go",
 		},
 	}
@@ -52,34 +52,34 @@ func TestPlease_FmtGeneratorFileName(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
-		name genpls.GeneratorName
+		name gen.GeneratorName
 		test bool
 	}
 
 	tests := []struct {
 		name         string
-		pls          genpls.Please
+		pls          gen.Please
 		args         args
 		wantFilename string
 	}{
 		{
 			name: "command name generated file",
-			pls: genpls.Please{
+			pls: gen.Please{
 				Filename: "/pkgname/file.go",
 			},
 			args: args{
-				name: genpls.GeneratorName("mock"),
+				name: gen.GeneratorName("mock"),
 				test: false,
 			},
 			wantFilename: "/pkgname/mock_gen.go",
 		},
 		{
 			name: "command name generated test file",
-			pls: genpls.Please{
+			pls: gen.Please{
 				Filename: "/pkgname/file.go",
 			},
 			args: args{
-				name: genpls.GeneratorName("mock"),
+				name: gen.GeneratorName("mock"),
 				test: true,
 			},
 			wantFilename: "/pkgname/mock_gen_test.go",
