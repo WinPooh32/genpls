@@ -43,7 +43,7 @@ func TestPlease_FmtFileName(t *testing.T) {
 			t.Parallel()
 
 			pls := tt.pls
-			assert.Equal(t, tt.want, pls.FmtFileName(tt.args.name))
+			assert.Equal(t, tt.want, pls.FormatFileName(tt.args.name))
 		})
 	}
 }
@@ -91,7 +91,7 @@ func TestPlease_FmtGeneratorFileName(t *testing.T) {
 			t.Parallel()
 
 			pls := tt.pls
-			assert.Equal(t, tt.wantFilename, pls.FmtGeneratorFileName(tt.args.name, tt.args.test))
+			assert.Equal(t, tt.wantFilename, pls.FormatGeneratorFileName(tt.args.name, tt.args.test))
 		})
 	}
 }

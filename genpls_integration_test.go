@@ -160,7 +160,7 @@ var genmap1 = map[genpls.GeneratorName]genpls.GenFunc{
 		}
 
 		return []genpls.File{{
-			Name: pp[0].FmtGeneratorFileName(name, false),
+			Name: pp[0].FormatGeneratorFileName(name, false),
 			Data: data,
 		}}, nil
 	},

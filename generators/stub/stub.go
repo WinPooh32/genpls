@@ -19,15 +19,15 @@ func Generate(_ context.Context, name genpls.GeneratorName, pp []genpls.Please) 
 
 	for filename, pp := range genpls.IterateFiles(pp) {
 		buf.Reset()
-		buf.WriteString(pp[0].FmtDoNotEditHeader(name))
-		buf.WriteString(pp[0].FmtPkg())
+		buf.WriteString(pp[0].FormatDoNotEditHeader(name))
+		buf.WriteString(pp[0].FormatPkg())
 
 		if err := generate(buf, pp); err != nil {
 			return nil, fmt.Errorf("generate: %w", err)
 		}
 
 		files = append(files, genpls.File{
-			Name: pp[0].FmtGeneratorFileName(name, strings.HasSuffix(filename, "_test.go")),
+			Name: pp[0].FormatGeneratorFileName(name, strings.HasSuffix(filename, "_test.go")),
 			Data: bytes.Clone(buf.Bytes()),
 		})
 	}
