@@ -157,6 +157,7 @@ func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
 	concrname := "Unimplemented" + inf.name
 	rcv := strings.ToLower(string([]rune(concrname)[0]))
 
+	fmt.Fprintf(buf, "var _ %s = (*%s)(nil)\n\n", inf.name, concrname)
 	fmt.Fprintf(buf, "// *%s implements %s.\n", concrname, inf.name)
 	fmt.Fprintf(buf, "type %s struct{}\n\n", concrname)
 
