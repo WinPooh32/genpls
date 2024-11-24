@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
-	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/WinPooh32/genpls/gen"
@@ -41,50 +42,128 @@ func Generate(ctx context.Context, name gen.GeneratorName, gp []gen.Please) ([]g
 	return files, nil
 }
 
-func generate(w io.Writer, gp []gen.Please) error {
+type methInfo struct {
+	name string
+	sig  string
+}
+
+type ifaceInfo struct {
+	name      string
+	object    types.Object
+	methInfos []methInfo
+}
+
+func generate(buf *bytes.Buffer, gp []gen.Please) error {
+	usedImports := map[gen.PkgPath]gen.PkgName{}
+	infos := make([]ifaceInfo, 0, len(gp))
+
 	for _, pls := range gp {
-		if err := stubIface(w, pls); err != nil {
-			return err
+		info, err := analyze(pls, usedImports)
+		if err != nil {
+			return fmt.Errorf("analyze: %w", err)
 		}
+
+		infos = append(infos, info)
+	}
+
+	if len(usedImports) > 0 {
+		genImports(buf, usedImports)
+	}
+
+	for _, inf := range infos {
+		genStubIface(buf, inf)
 	}
 
 	return nil
 }
 
-func stubIface(w io.Writer, pls gen.Please) error {
+func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo, error) {
 	ifacename := pls.TS.Spec.Name.Name
 	position := pls.TS.Pkg.Fset.Position(pls.TS.Spec.Pos())
 
 	_, ok := pls.TS.Spec.Type.(*ast.InterfaceType)
 	if !ok {
-		return fmt.Errorf("%s: type %q must be an interface", position, ifacename)
+		return ifaceInfo{}, fmt.Errorf("%s: type %q must be an interface", position, ifacename)
 	}
 
 	object := pls.TS.Pkg.Types.Scope().Lookup(ifacename)
 	if object == nil {
-		return fmt.Errorf("%s: object %s not found", position, ifacename)
+		return ifaceInfo{}, fmt.Errorf("%s: object %s not found", position, ifacename)
 	}
 
 	if _, ok := object.(*types.TypeName); !ok {
-		return fmt.Errorf("%v is not a named type", object)
+		return ifaceInfo{}, fmt.Errorf("%v is not a named type", object)
 	}
-
-	concrname := ifacename + "Stub"
-	rcv := strings.ToLower(string([]rune(concrname)[0]))
-
-	fmt.Fprintf(w, "// *%s implements %s.\n", concrname, ifacename)
-	fmt.Fprintf(w, "type %s struct{}\n\n", concrname)
 
 	mset := types.NewMethodSet(object.Type())
 
+	methInfos := make([]methInfo, 0, mset.Len())
+
 	for i := range mset.Len() {
 		meth := mset.At(i).Obj()
-		sig := types.TypeString(meth.Type(), (*types.Package).Name)
+		sig := types.TypeString(meth.Type(), alias(pls.Imports, usedImports))
 
-		fmt.Fprintf(w, "func (%s *%s) %s%s {\n\tpanic(\"not implemented!\")\n}\n\n",
-			rcv, concrname, meth.Name(),
-			strings.TrimPrefix(sig, "func"))
+		methInfos = append(methInfos, methInfo{
+			name: meth.Name(),
+			sig:  strings.TrimPrefix(sig, "func"),
+		})
 	}
 
-	return nil
+	return ifaceInfo{
+		name:      ifacename,
+		object:    object,
+		methInfos: methInfos,
+	}, nil
+}
+
+func alias(imports map[gen.PkgPath]gen.PkgName, usedImports map[gen.PkgPath]gen.PkgName) types.Qualifier {
+	return func(p *types.Package) string {
+		path := gen.PkgPath(p.Path())
+		alias := imports[path]
+
+		// Populate imports used by generated types.
+		// Include empty alias too.
+		if usedImports != nil {
+			usedImports[path] = alias
+		}
+
+		return string(alias)
+	}
+}
+
+func genImports(buf *bytes.Buffer, usedImports map[gen.PkgPath]gen.PkgName) {
+	pkgs := slices.Sorted(maps.Keys(usedImports))
+
+	buf.WriteString("import (\n")
+
+	for _, pkg := range pkgs {
+		buf.WriteByte('\t')
+
+		alias := usedImports[pkg]
+		if alias != "" {
+			buf.WriteString(string(alias))
+			buf.WriteByte(' ')
+		}
+
+		buf.WriteByte('"')
+		buf.WriteString(string(pkg))
+		buf.WriteString("\"\n")
+	}
+
+	buf.WriteString(")\n\n")
+}
+
+func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
+	concrname := "Unimplemented" + inf.name
+	rcv := strings.ToLower(string([]rune(concrname)[0]))
+
+	fmt.Fprintf(buf, "// *%s implements %s.\n", concrname, inf.name)
+	fmt.Fprintf(buf, "type %s struct{}\n\n", concrname)
+
+	for _, minf := range inf.methInfos {
+		fmt.Fprintf(buf,
+			"func (%s *%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
+			rcv, concrname, minf.name, minf.sig, minf.name,
+		)
+	}
 }
