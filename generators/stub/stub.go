@@ -127,6 +127,10 @@ func alias(imports map[gen.PkgPath]gen.PkgName, usedImports map[gen.PkgPath]gen.
 			usedImports[path] = alias
 		}
 
+		if alias == "" {
+			return p.Name()
+		}
+
 		return string(alias)
 	}
 }
