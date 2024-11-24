@@ -247,7 +247,8 @@ func (gw *genWorker) imports(in *inspector.Inspector) map[gen.PkgPath]gen.PkgNam
 			return true
 		}
 
-		if spec.Name.Name == "_" {
+		switch spec.Name.Name {
+		case "_", ".":
 			return true
 		}
 
