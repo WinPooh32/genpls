@@ -7,10 +7,16 @@ import (
 
 const testSuffix = "_test"
 
+type (
+	PkgName string
+	PkgPath string
+)
+
 type Please struct {
 	Filename string
 	Args     []string
 	TS       *TypeSpec
+	Imports  map[PkgPath]PkgName
 }
 
 // FormatFileName formats absolute path for a new destination file.

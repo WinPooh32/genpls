@@ -8,6 +8,7 @@ import (
 	"maps"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -161,6 +162,8 @@ func (gw *genWorker) scan(pkg *packages.Package) map[string][]gen.Please {
 
 	in := inspector.New(syntax)
 
+	imports := gw.imports(in)
+
 	for ts := range gw.typeSpecs(pkg, in) {
 		typs[ts.Spec.Name.Name] = &ts
 	}
@@ -184,7 +187,7 @@ func (gw *genWorker) scan(pkg *packages.Package) map[string][]gen.Please {
 	cmds := map[string][]gen.Please{}
 
 	for _, ts := range typs {
-		ts.AddCMD(cmds, commands(ts, gw.gens))
+		ts.AddCMD(cmds, imports, commands(ts, gw.gens))
 	}
 
 	return cmds
@@ -224,6 +227,41 @@ func (gw *genWorker) sendFile(ctx context.Context, file gen.File) error {
 	}
 
 	return nil
+}
+
+var funcImportSpecFilter = []ast.Node{
+	new(ast.ImportSpec),
+}
+
+// imports returns the map with a key as a package path and value as an alias of the package name.
+func (gw *genWorker) imports(in *inspector.Inspector) map[gen.PkgPath]gen.PkgName {
+	m := map[gen.PkgPath]gen.PkgName{}
+
+	in.Nodes(funcImportSpecFilter, func(n ast.Node, _ bool) (proceed bool) {
+		spec, ok := n.(*ast.ImportSpec)
+		if !ok {
+			return true
+		}
+
+		if spec.Name == nil {
+			return true
+		}
+
+		if spec.Name.Name == "_" {
+			return true
+		}
+
+		pkgPath, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			panic("failed to unquote package import path " + spec.Path.Value)
+		}
+
+		m[gen.PkgPath(pkgPath)] = gen.PkgName(spec.Name.Name)
+
+		return true
+	})
+
+	return m
 }
 
 var typeSpecsFilter = []ast.Node{

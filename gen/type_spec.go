@@ -26,7 +26,7 @@ type TypeSpec struct {
 	Methods []FuncSpec
 }
 
-func (ts *TypeSpec) AddCMD(cmds map[string][]Please, cmdSeq iter.Seq[Command]) {
+func (ts *TypeSpec) AddCMD(cmds map[string][]Please, imports map[PkgPath]PkgName, cmdSeq iter.Seq[Command]) {
 	filename := ts.Pkg.Fset.Position(ts.Spec.Pos()).Filename
 
 	for cmd := range cmdSeq {
@@ -34,6 +34,7 @@ func (ts *TypeSpec) AddCMD(cmds map[string][]Please, cmdSeq iter.Seq[Command]) {
 			Filename: filename,
 			Args:     cmd.Args,
 			TS:       ts,
+			Imports:  imports,
 		})
 	}
 }
