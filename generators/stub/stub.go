@@ -101,7 +101,7 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 
 	for i := range mset.Len() {
 		meth := mset.At(i).Obj()
-		sig := types.TypeString(meth.Type(), alias(pls.Imports, usedImports))
+		sig := types.TypeString(meth.Type(), alias(pls.TS.Pkg.Types, pls.Imports, usedImports))
 
 		methInfos = append(methInfos, methInfo{
 			name: meth.Name(),
@@ -167,8 +167,21 @@ func genImports(buf *bytes.Buffer, usedImports map[gen.PkgPath]gen.PkgName) {
 }
 
 func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
-	concrname := "Unimplemented" + inf.name
-	rcv := strings.ToLower(string([]rune(concrname)[0]))
+	var concrname string
+
+	const unimplemented = "Unimplemented"
+
+	startChar := string([]rune(inf.name)[0])
+
+	if upper := strings.ToUpper(startChar); startChar != upper {
+		if len(inf.name) > 1 {
+			concrname = unimplemented + upper + inf.name[1:]
+		} else {
+			concrname = unimplemented + upper
+		}
+	} else {
+		concrname = unimplemented + inf.name
+	}
 
 	fmt.Fprintf(buf, "var _ %s = (*%s)(nil)\n\n", inf.name, concrname)
 	fmt.Fprintf(buf, "// *%s implements %s.\n", concrname, inf.name)
@@ -176,8 +189,8 @@ func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
 
 	for _, minf := range inf.methInfos {
 		fmt.Fprintf(buf,
-			"func (%s *%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
-			rcv, concrname, minf.name, minf.sig, minf.name,
+			"func (*%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
+			concrname, minf.name, minf.sig, minf.name,
 		)
 	}
 }
