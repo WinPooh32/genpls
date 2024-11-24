@@ -116,8 +116,17 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 	}, nil
 }
 
-func alias(imports map[gen.PkgPath]gen.PkgName, usedImports map[gen.PkgPath]gen.PkgName) types.Qualifier {
+func alias(
+	pkg *types.Package,
+	imports map[gen.PkgPath]gen.PkgName,
+	usedImports map[gen.PkgPath]gen.PkgName,
+) types.Qualifier {
 	return func(p *types.Package) string {
+		if pkg == p {
+			// local imports are unqualified.
+			return ""
+		}
+
 		path := gen.PkgPath(p.Path())
 		alias := imports[path]
 
