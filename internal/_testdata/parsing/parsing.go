@@ -63,7 +63,6 @@ type S4[T any] struct {
 // method7 doc
 func (S4[T]) method7(a T) {}
 
-//genpls:stub
 //genpls:test I1
 type I1 interface {
 	// IMethod1 doc
