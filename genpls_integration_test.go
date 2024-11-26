@@ -15,13 +15,18 @@ import (
 
 	"github.com/WinPooh32/genpls"
 	"github.com/WinPooh32/genpls/gen"
+	"github.com/WinPooh32/genpls/generators/stub"
 	"github.com/WinPooh32/genpls/opt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//go:embed testdata/cmdinfo.json
-var testCmdInfos []byte
+var (
+	//go:embed testdata/cmdinfo.json
+	testCmdInfos []byte
+	//go:embed testdata/stub_gen.txt
+	testStubGeneratedCode []byte
+)
 
 func mustLoad(t *testing.T, dir string, patterns ...string) *genpls.Generator {
 	t.Helper()
@@ -176,24 +181,40 @@ func TestGenerator_Generate(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		gen  *genpls.Generator
-		args args
-		want []opt.Result[gen.File]
+		name     string
+		gen      *genpls.Generator
+		args     args
+		want     []opt.Result[gen.File]
+		wantJSON bool
 	}{
 		{
 			name: "simple",
 			gen:  mustLoad(t, "internal/_testdata/parsing", "./..."),
-			args: args{
-				jobs: 1,
-				gens: genmap1,
-			},
+			args: args{jobs: 1, gens: genmap1},
 			want: []opt.Result[gen.File]{
 				opt.Ok(gen.File{
 					Name: "/internal/_testdata/parsing/test_gen.go",
 					Data: testCmdInfos,
 				}),
 			},
+			wantJSON: true,
+		},
+		{
+			name: "stub",
+			gen:  mustLoad(t, "internal/_testdata/parsing", "./..."),
+			args: args{
+				jobs: 1,
+				gens: map[gen.GeneratorName]gen.Func{
+					"stub": stub.Generate,
+				},
+			},
+			want: []opt.Result[gen.File]{
+				opt.Ok(gen.File{
+					Name: "parsing/stub_gen.go",
+					Data: testStubGeneratedCode,
+				}),
+			},
+			wantJSON: false,
 		},
 	}
 
@@ -222,8 +243,13 @@ func TestGenerator_Generate(t *testing.T) {
 				if wantRes.Err != nil {
 					assert.Equal(t, wantRes.Err.Error(), gotRes.Err.Error())
 				} else {
-					assert.Equal(t, wantRes.Ok.Name, gotRes.Ok.Name)
-					assert.JSONEq(t, string(wantRes.Ok.Data), string(gotRes.Ok.Data))
+					assert.Contains(t, gotRes.Ok.Name, wantRes.Ok.Name)
+
+					if tt.wantJSON {
+						assert.JSONEq(t, string(wantRes.Ok.Data), string(gotRes.Ok.Data))
+					} else {
+						assert.Equal(t, string(wantRes.Ok.Data), string(gotRes.Ok.Data))
+					}
 				}
 			}
 		})

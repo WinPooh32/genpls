@@ -1,5 +1,12 @@
 package parse
 
+import (
+	"go/types"
+
+	types_1 "parse/types"
+	types_2 "parse/types"
+)
+
 //genpls:test S1
 type S1 struct {
 	// S1Field1 doc
@@ -56,10 +63,18 @@ type S4[T any] struct {
 // method7 doc
 func (S4[T]) method7(a T) {}
 
+//genpls:stub
 //genpls:test I1
 type I1 interface {
 	// IMethod1 doc
 	IMethod1()
 	// imethod2 doc
 	imethod2()
+}
+
+//genpls:stub
+type I2 interface {
+	IMethod1()
+	imethod2()
+	IMethod3(a int, b types_1.S1, c types_1.S2[string], d types_2.S2[*types.Package]) (types_1.S1, error)
 }
