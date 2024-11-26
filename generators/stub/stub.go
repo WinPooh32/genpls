@@ -48,9 +48,11 @@ type methInfo struct {
 }
 
 type ifaceInfo struct {
-	name      string
-	object    types.Object
-	methInfos []methInfo
+	name           string
+	object         types.Object
+	methInfos      []methInfo
+	typeParamsDecl string
+	typeParams     string
 }
 
 func generate(buf *bytes.Buffer, gp []gen.Please) error {
@@ -95,13 +97,22 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 		return ifaceInfo{}, fmt.Errorf("%v is not a named type", object)
 	}
 
+	typ, ok := object.Type().(*types.Named)
+	if !ok {
+		return ifaceInfo{}, fmt.Errorf("unexpected type %T", object.Type())
+	}
+
+	pkgAliasFn := alias(pls.TS.Pkg.Types, pls.Imports, usedImports)
+
+	typeParamsDecl, typeParams := typeParams(typ, pkgAliasFn)
+
 	mset := types.NewMethodSet(object.Type())
 
 	methInfos := make([]methInfo, 0, mset.Len())
 
 	for i := range mset.Len() {
 		meth := mset.At(i).Obj()
-		sig := types.TypeString(meth.Type(), alias(pls.TS.Pkg.Types, pls.Imports, usedImports))
+		sig := types.TypeString(meth.Type(), pkgAliasFn)
 
 		methInfos = append(methInfos, methInfo{
 			name: meth.Name(),
@@ -110,9 +121,11 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 	}
 
 	return ifaceInfo{
-		name:      ifacename,
-		object:    object,
-		methInfos: methInfos,
+		name:           ifacename,
+		object:         object,
+		methInfos:      methInfos,
+		typeParamsDecl: typeParamsDecl,
+		typeParams:     typeParams,
 	}, nil
 }
 
@@ -142,6 +155,31 @@ func alias(
 
 		return string(alias)
 	}
+}
+
+func typeParams(typ *types.Named, pkgAliasFn types.Qualifier) (typeParamsDecl string, typeParams string) {
+	if typ.TypeParams().Len() > 0 {
+		typeParamsDecl = "["
+		typeParams = "["
+
+		for i := range typ.TypeParams().Len() {
+			param := typ.TypeParams().At(i)
+			constraintName := types.TypeString(param.Constraint(), pkgAliasFn)
+
+			if i == 0 {
+				typeParamsDecl += param.String() + " " + constraintName
+				typeParams += param.String()
+			} else {
+				typeParamsDecl += ", " + param.String() + " " + constraintName
+				typeParams += ", " + param.String()
+			}
+		}
+
+		typeParamsDecl += "]"
+		typeParams += "]"
+	}
+
+	return typeParamsDecl, typeParams
 }
 
 func genImports(buf *bytes.Buffer, usedImports map[gen.PkgPath]gen.PkgName) {
@@ -183,14 +221,14 @@ func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
 		concrname = unimplemented + inf.name
 	}
 
-	fmt.Fprintf(buf, "var _ %s = (*%s)(nil)\n\n", inf.name, concrname)
+	// fmt.Fprintf(buf, "var _ %s = (*%s)(nil)\n\n", inf.name, concrname)
 	fmt.Fprintf(buf, "// *%s implements %s.\n", concrname, inf.name)
-	fmt.Fprintf(buf, "type %s struct{}\n\n", concrname)
+	fmt.Fprintf(buf, "type %s%s struct{}\n\n", concrname, inf.typeParamsDecl)
 
 	for _, minf := range inf.methInfos {
 		fmt.Fprintf(buf,
-			"func (*%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
-			concrname, minf.name, minf.sig, minf.name,
+			"func (*%s%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
+			concrname, inf.typeParams, minf.name, minf.sig, minf.name,
 		)
 	}
 }

@@ -2,6 +2,7 @@ package parse
 
 import (
 	"go/types"
+	io_1 "io"
 
 	types_1 "parse/types"
 	types_2 "parse/types"
@@ -72,8 +73,8 @@ type I1 interface {
 }
 
 //genpls:stub
-type I2 interface {
+type I2[T any, U comparable, Q io_1.Reader] interface {
 	IMethod1()
-	imethod2()
+	imethod2(t T) (u U)
 	IMethod3(a int, b types_1.S1, c types_1.S2[string], d types_2.S2[*types.Package]) (types_1.S1, error)
 }
