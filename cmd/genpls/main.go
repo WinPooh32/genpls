@@ -11,12 +11,14 @@ import (
 
 	"github.com/WinPooh32/genpls"
 	"github.com/WinPooh32/genpls/gen"
+	"github.com/WinPooh32/genpls/generators/proxy"
 	"github.com/WinPooh32/genpls/generators/stub"
 )
 
 // Eenabled generators.
 var generators = map[gen.GeneratorName]gen.Func{
-	"stub": stub.Generate,
+	"stub":  stub.Generate,
+	"proxy": proxy.Generate,
 }
 
 type argSet []string
