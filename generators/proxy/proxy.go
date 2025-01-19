@@ -88,13 +88,29 @@ func generate(buf *bytes.Buffer, gp []gen.Please) error {
 }
 
 func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo, error) {
-	ifacename := pls.TS.Spec.Name.Name
+	origIfacename := pls.TS.Spec.Name.Name
 	position := pls.TS.Pkg.Fset.Position(pls.TS.Spec.Pos())
 
-	_, ok := pls.TS.Spec.Type.(*ast.InterfaceType)
-	if !ok {
-		return ifaceInfo{}, fmt.Errorf("%s: type %q must be an interface", position, ifacename)
+	var spec *ast.TypeSpec
+
+	// Handle aliased interface
+	if ident, ok := pls.TS.Spec.Type.(*ast.Ident); ok {
+		typeSpec, okTypeSpec := ident.Obj.Decl.(*ast.TypeSpec)
+		if !okTypeSpec {
+			return ifaceInfo{}, fmt.Errorf("%s: type %q expected to be an interface alias", position, origIfacename)
+		}
+
+		spec = typeSpec
+	} else {
+		spec = pls.TS.Spec
 	}
+
+	_, ok := spec.Type.(*ast.InterfaceType)
+	if !ok {
+		return ifaceInfo{}, fmt.Errorf("%s: type %q must be an interface", position, origIfacename)
+	}
+
+	ifacename := spec.Name.Name
 
 	object := pls.TS.Pkg.Types.Scope().Lookup(ifacename)
 	if object == nil {
@@ -105,16 +121,18 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 		return ifaceInfo{}, fmt.Errorf("%v is not a named type", object)
 	}
 
-	typ, ok := object.Type().(*types.Named)
+	objtyp := object.Type()
+
+	typ, ok := objtyp.(*types.Named)
 	if !ok {
-		return ifaceInfo{}, fmt.Errorf("unexpected type %T", object.Type())
+		return ifaceInfo{}, fmt.Errorf("unexpected type %T", objtyp)
 	}
 
 	pkgAliasFn := alias(pls.TS.Pkg.Types, pls.Imports, usedImports)
 
 	typeParamsDecl, typeParams := typeParams(typ, pkgAliasFn)
 
-	mset := types.NewMethodSet(object.Type())
+	mset := types.NewMethodSet(objtyp)
 
 	methInfos := make([]methInfo, 0, mset.Len())
 
@@ -139,7 +157,7 @@ func analyze(pls gen.Please, usedImports map[gen.PkgPath]gen.PkgName) (ifaceInfo
 	}
 
 	return ifaceInfo{
-		name:           ifacename,
+		name:           origIfacename,
 		object:         object,
 		methInfos:      methInfos,
 		typeParamsDecl: typeParamsDecl,
