@@ -65,6 +65,7 @@ type S4[T any] struct {
 func (S4[T]) method7(a T) {}
 
 //genpls:test I1
+//genpls:proxy
 type I1 interface {
 	// IMethod1 doc
 	IMethod1()
@@ -73,8 +74,12 @@ type I1 interface {
 }
 
 //genpls:stub
+//genpls:proxy
 type I2[T any, U comparable, Q io_1.Reader] interface {
 	IMethod1()
 	imethod2(t T) (u U)
 	IMethod3(a int, b types_1.S1, c types_1.S2[string], d types_2.S2[*types.Package]) (types_1.S1, error)
 }
+
+//genpls:proxy
+type AliasIface = I1
