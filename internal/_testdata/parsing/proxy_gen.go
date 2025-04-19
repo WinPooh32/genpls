@@ -9,37 +9,6 @@ import (
 	types_2 "parse/types"
 )
 
-// *ProxyI1 implements I1.
-type ProxyI1 struct {
-	v      I1
-	logger interface{Log(string, ...any)}
-}
-
-func NewProxyI1(v I1, logger interface{Log(string, ...any)}) (*ProxyI1, error) {
-	if v == nil {
-		return nil, errors.New("v is nil")
-	}
-	if logger == nil {
-		return nil, errors.New("logger is nil")
-	}
-	return &ProxyI1{
-		v:      v,
-		logger: logger,
-	}, nil
-}
-
-func (p *ProxyI1) IMethod1() {
-	p.logger.Log("Calling IMethod1", "arguments", )
-	p.v.IMethod1()
-	p.logger.Log("Calling IMethod1", "results")
-}
-
-func (p *ProxyI1) imethod2() {
-	p.logger.Log("Calling imethod2", "arguments", )
-	p.v.imethod2()
-	p.logger.Log("Calling imethod2", "results")
-}
-
 // *ProxyI2 implements I2.
 type ProxyI2[T any, U comparable, Q io_1.Reader] struct {
 	v      I2[T, U, Q]
@@ -77,6 +46,37 @@ func (p *ProxyI2[T, U, Q]) imethod2(t T) (u U) {
 	r0 := p.v.imethod2(t)
 	p.logger.Log("Calling imethod2", "results", r0)
 	return r0
+}
+
+// *ProxyI1 implements I1.
+type ProxyI1 struct {
+	v      I1
+	logger interface{Log(string, ...any)}
+}
+
+func NewProxyI1(v I1, logger interface{Log(string, ...any)}) (*ProxyI1, error) {
+	if v == nil {
+		return nil, errors.New("v is nil")
+	}
+	if logger == nil {
+		return nil, errors.New("logger is nil")
+	}
+	return &ProxyI1{
+		v:      v,
+		logger: logger,
+	}, nil
+}
+
+func (p *ProxyI1) IMethod1() {
+	p.logger.Log("Calling IMethod1", "arguments", )
+	p.v.IMethod1()
+	p.logger.Log("Calling IMethod1", "results")
+}
+
+func (p *ProxyI1) imethod2() {
+	p.logger.Log("Calling imethod2", "arguments", )
+	p.v.imethod2()
+	p.logger.Log("Calling imethod2", "results")
 }
 
 // *ProxyAliasIface implements AliasIface.

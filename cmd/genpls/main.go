@@ -7,18 +7,21 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 
 	"github.com/WinPooh32/genpls"
 	"github.com/WinPooh32/genpls/gen"
+	"github.com/WinPooh32/genpls/generators/mock"
 	"github.com/WinPooh32/genpls/generators/proxy"
 	"github.com/WinPooh32/genpls/generators/stub"
 )
 
-// Eenabled generators.
+// Enabled generators.
 var generators = map[gen.GeneratorName]gen.Func{
 	"stub":  stub.Generate,
 	"proxy": proxy.Generate,
+	"mock":  mock.Generate,
 }
 
 type argSet []string
@@ -86,6 +89,10 @@ func generate(ctx context.Context, flags flags) error {
 }
 
 func writeFile(name string, data []byte) (err error) {
+	if err := os.MkdirAll(filepath.Dir(name), os.ModePerm); err != nil {
+		return fmt.Errorf("mkdir all: %w", err)
+	}
+
 	file, err := os.Create(name)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)

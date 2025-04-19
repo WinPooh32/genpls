@@ -66,6 +66,7 @@ func (S4[T]) method7(a T) {}
 
 //genpls:test I1
 //genpls:proxy
+//genpls:mock
 type I1 interface {
 	// IMethod1 doc
 	IMethod1()
@@ -75,6 +76,7 @@ type I1 interface {
 
 //genpls:stub
 //genpls:proxy
+//genpls:mock
 type I2[T any, U comparable, Q io_1.Reader] interface {
 	IMethod1()
 	imethod2(t T) (u U)
@@ -82,4 +84,5 @@ type I2[T any, U comparable, Q io_1.Reader] interface {
 }
 
 //genpls:proxy
+//genpls:mock
 type AliasIface = I1
