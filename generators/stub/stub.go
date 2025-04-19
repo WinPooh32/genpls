@@ -227,7 +227,7 @@ func genStubIface(buf *bytes.Buffer, inf ifaceInfo) {
 
 	for _, minf := range inf.methInfos {
 		fmt.Fprintf(buf,
-			"func (*%s%s) %s%s {\n\tpanic(\"method %s not implemented!\")\n}\n\n",
+			"func (*%s%s) %s%s {\n\tpanic(\"method %s is not implemented!\")\n}\n\n",
 			concrname, inf.typeParams, minf.name, minf.sig, minf.name,
 		)
 	}

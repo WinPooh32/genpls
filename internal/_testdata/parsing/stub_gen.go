@@ -13,14 +13,14 @@ import (
 type UnimplementedI2[T any, U comparable, Q io_1.Reader] struct{}
 
 func (*UnimplementedI2[T, U, Q]) IMethod1() {
-	panic("method IMethod1 not implemented!")
+	panic("method IMethod1 is not implemented!")
 }
 
 func (*UnimplementedI2[T, U, Q]) IMethod3(a int, b types_2.S1, c types_2.S2[string], d types_2.S2[*types.Package]) (types_2.S1, error) {
-	panic("method IMethod3 not implemented!")
+	panic("method IMethod3 is not implemented!")
 }
 
 func (*UnimplementedI2[T, U, Q]) imethod2(t T) (u U) {
-	panic("method imethod2 not implemented!")
+	panic("method imethod2 is not implemented!")
 }
 
